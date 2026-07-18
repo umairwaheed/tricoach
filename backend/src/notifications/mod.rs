@@ -5,7 +5,7 @@
 //! Failures are logged, never fatal: a missed notification must not break a request.
 
 use serde::Serialize;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::repositories::device_repo;
@@ -36,7 +36,7 @@ impl PushSender {
     }
 
     /// Send a notification to every device registered to a user.
-    pub async fn notify_user(&self, pool: &SqlitePool, user_id: Uuid, title: &str, body: &str) {
+    pub async fn notify_user(&self, pool: &PgPool, user_id: Uuid, title: &str, body: &str) {
         let tokens = match device_repo::list_for_user(pool, user_id).await {
             Ok(t) => t,
             Err(err) => {

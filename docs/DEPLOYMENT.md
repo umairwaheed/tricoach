@@ -4,10 +4,10 @@ The backend is a single stateless container that serves HTTP on `$BIND_ADDR`
 (default `0.0.0.0:8080`). Cloud Run is a natural fit. Gemini is Google's own API,
 so keys and quotas live in the same cloud.
 
-> **State note:** the MVP uses embedded SQLite. On Cloud Run's ephemeral
-> filesystem this means data does not persist across revisions/instances — fine
-> for a demo. For real persistence, either mount a volume (single instance) or
-> switch to **Cloud SQL (Postgres)** per the audit. Both options are described below.
+> **Database:** the app uses **PostgreSQL**. In production, run a managed instance
+> (Cloud SQL / RDS) and point `DATABASE_URL` at it. In development it connects to the
+> shared Postgres on `internal-one` over an SSH tunnel (see `backend/.env.example`).
+> The API container is stateless, so it scales horizontally behind one database.
 
 ## 0. Prerequisites
 
@@ -37,35 +37,24 @@ echo -n "$(openssl rand -hex 32)" | gcloud secrets create jwt-secret --data-file
 echo -n "YOUR_GEMINI_KEY"        | gcloud secrets create gemini-api-key --data-file=-
 ```
 
-## 3. Deploy
+## 3. Deploy (Cloud SQL Postgres)
 
-### Option A — demo (SQLite, single instance)
+1. Create a Postgres instance and database, then reference it via the Cloud SQL
+   connector. Store the connection string as a secret:
 
 ```bash
-gcloud run deploy tricoach-api \
-  --image $IMAGE --region $REGION --allow-unauthenticated \
-  --max-instances 1 \
-  --set-env-vars "BIND_ADDR=0.0.0.0:8080,DATABASE_URL=sqlite:///data/tricoach.db,RUST_LOG=info" \
-  --set-secrets "JWT_SECRET=jwt-secret:latest,GEMINI_API_KEY=gemini-api-key:latest"
+echo -n "postgres://USER:PASS@/tricoach?host=/cloudsql/PROJECT:REGION:INSTANCE" \
+  | gcloud secrets create database-url --data-file=-
 ```
 
-`--max-instances 1` keeps a single SQLite writer. Add a mounted volume
-(Cloud Run + a Filestore/GCS‑FUSE volume) if data must survive restarts.
-
-### Option B — production (Cloud SQL Postgres)
-
-1. Create a Postgres instance and database, then point `DATABASE_URL` at it via the
-   Cloud SQL connector.
-2. Change the backend's SQLx driver to Postgres (contained to `db.rs`,
-   `repositories/`, and the enum `Type/Encode/Decode` impls — see the audit).
-3. Deploy with the Cloud SQL connection attached:
+2. Deploy with the Cloud SQL connection attached (migrations run on startup):
 
 ```bash
 gcloud run deploy tricoach-api \
   --image $IMAGE --region $REGION --allow-unauthenticated \
   --add-cloudsql-instances YOUR_PROJECT:REGION:INSTANCE \
-  --set-env-vars "BIND_ADDR=0.0.0.0:8080,DATABASE_URL=postgres://…,RUST_LOG=info" \
-  --set-secrets "JWT_SECRET=jwt-secret:latest,GEMINI_API_KEY=gemini-api-key:latest"
+  --set-env-vars "BIND_ADDR=0.0.0.0:8080,RUST_LOG=info" \
+  --set-secrets "DATABASE_URL=database-url:latest,JWT_SECRET=jwt-secret:latest,GEMINI_API_KEY=gemini-api-key:latest"
 ```
 
 ## 4. Point the mobile app at the deployed API
@@ -86,5 +75,5 @@ captured via `POST /api/v1/devices` and delivered through Expo Push.
 ## AWS equivalent
 
 The same container runs on **AWS App Runner** or **ECS Fargate**; use **RDS Postgres**
-for Option B and **Secrets Manager** for `JWT_SECRET` / `GEMINI_API_KEY`. Nothing in
-the app is cloud‑specific.
+for the database and **Secrets Manager** for `DATABASE_URL` / `JWT_SECRET` /
+`GEMINI_API_KEY`. Nothing in the app is cloud‑specific.

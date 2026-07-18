@@ -1,10 +1,30 @@
-# TriCoach runs on embedded SQLite — no database server required.
-# The database file is persisted in the `tricoach_data` volume.
+# Self-contained local stack: Postgres + the API.
+# The shared dev database lives on `internal-one` (see backend/.env.example);
+# this compose file is for running everything locally without that server.
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: tricoach
+      POSTGRES_PASSWORD: tricoach
+      POSTGRES_DB: tricoach
+    ports:
+      - "5432:5432"
+    volumes:
+      - tricoach_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tricoach"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   api:
     build: ./backend
+    depends_on:
+      db:
+        condition: service_healthy
     environment:
-      DATABASE_URL: sqlite:///data/tricoach.db
+      DATABASE_URL: postgres://tricoach:tricoach@db:5432/tricoach
       BIND_ADDR: 0.0.0.0:8080
       JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
@@ -12,8 +32,6 @@ services:
       RUST_LOG: info,tower_http=info,sqlx=warn
     ports:
       - "8080:8080"
-    volumes:
-      - tricoach_data:/data
 
 volumes:
-  tricoach_data:
+  tricoach_pgdata:

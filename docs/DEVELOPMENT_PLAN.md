@@ -14,7 +14,7 @@ to production.
 
 ## Milestone 0 — Foundations ✅
 
-**Deliverables:** repo layout, Rust + Axum skeleton, SQLite schema & migrations,
+**Deliverables:** repo layout, Rust + Axum skeleton, Postgres schema & migrations,
 config/telemetry, error model, CI‑ready `cargo test`.
 **Acceptance:** `cargo run` serves `/health`; migrations apply on boot.
 

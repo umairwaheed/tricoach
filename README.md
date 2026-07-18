@@ -5,10 +5,10 @@ A production‑shaped MVP that generates **periodised triathlon training plans**
 feedback**, sends **push notifications**, and schedules training **around a busy
 calendar**.
 
-This is a portfolio build demonstrating a **Rust backend** (Axum + SQLx) paired
-with a **React Native** (Expo + TypeScript) app. It was built to mirror a real
-brief: audit an existing coaching prototype, propose a scalable rebuild, and
-implement the core features cleanly.
+A **Rust backend** (Axum + SQLx + PostgreSQL) paired with a **React Native**
+(Expo + TypeScript) app. The work began by auditing an existing coaching
+prototype, proposing a scalable rebuild, and implementing the core features
+cleanly.
 
 <p align="center">
   <img src="docs/screenshots/today-dashboard.jpg" width="49%" alt="Today dashboard" />
@@ -32,7 +32,7 @@ real AI when `GEMINI_API_KEY` is set — the same trait, two implementations.
 
 ```
             ┌───────────────────────── Rust backend (Axum) ─────────────────────────┐
-            │  routes → services → repositories → SQLite                              │
+            │  routes → services → repositories → PostgreSQL                          │
  RN app ──► │                              │                                          │
  (Expo)     │                              ▼                                          │
             │                        AiCoach (trait)                                  │
@@ -46,15 +46,16 @@ real AI when `GEMINI_API_KEY` is set — the same trait, two implementations.
 
 ## Tech stack
 
-**Backend** — Rust · [Axum](https://github.com/tokio-rs/axum) · [SQLx](https://github.com/launchbadge/sqlx) (SQLite, embedded) · JWT (`jsonwebtoken`) + Argon2id password hashing · `tracing` · Google Gemini · Expo Push.
+**Backend** — Rust · [Axum](https://github.com/tokio-rs/axum) · [SQLx](https://github.com/launchbadge/sqlx) + **PostgreSQL** · JWT (`jsonwebtoken`) + Argon2id password hashing · `tracing` · Google Gemini · Expo Push.
 
 **Mobile** — React Native (Expo SDK 57, TypeScript) · React Navigation · TanStack Query · Axios · SecureStore.
 
 **Ops** — Multi‑stage Docker build · `docker compose` · designed for GCP Cloud Run (see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
 
-> SQLite keeps the demo zero‑dependency (no DB server to run). The data layer is
-> isolated behind repository functions, so moving to Postgres for scale is a
-> contained change — see the audit doc.
+> The data layer is isolated behind repository functions, so the database is a
+> contained concern. The shared dev database runs on `internal-one` (Postgres,
+> reached via an SSH tunnel); a local `docker compose` Postgres is provided for
+> self‑contained runs.
 
 ---
 
@@ -88,11 +89,18 @@ docker-compose.yml
 
 ### 1. Backend
 
-Prerequisites: Rust (stable). No database server needed — SQLite is embedded.
+Prerequisites: Rust (stable) and a PostgreSQL database. Two options:
+
+- **Local**: `docker compose up db` (Postgres on `:5432`), or
+- **Shared dev DB** on `internal-one` via SSH tunnel:
+  ```bash
+  ssh -f -N -L 5433:127.0.0.1:5432 internal-one
+  # then set DATABASE_URL=postgres://tt-app:<password>@127.0.0.1:5433/tt-app
+  ```
 
 ```bash
 cd backend
-cp .env.example .env            # optional; sensible defaults exist
+cp .env.example .env            # set DATABASE_URL
 cargo run                       # runs migrations, then serves on :8080
 ```
 
@@ -127,10 +135,10 @@ npm run web        # or: npm run ios / npm run android
 The app talks to `http://localhost:8080` by default (see `app.json → extra.apiUrl`).
 On a physical device, change `localhost` to your machine's LAN IP.
 
-### 3. Docker (backend)
+### 3. Docker (full stack)
 
 ```bash
-docker compose up --build       # API on :8080, SQLite persisted in a volume
+docker compose up --build       # Postgres + API on :8080
 ```
 
 ---

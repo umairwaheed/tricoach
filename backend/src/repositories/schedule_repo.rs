@@ -1,5 +1,5 @@
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::dto::CreateScheduleBlockRequest;
@@ -7,7 +7,7 @@ use crate::domain::models::ScheduleBlock;
 use crate::error::AppResult;
 
 pub async fn create(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     req: &CreateScheduleBlockRequest,
 ) -> AppResult<ScheduleBlock> {
@@ -30,7 +30,7 @@ pub async fn create(
 }
 
 pub async fn list_between(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     from: DateTime<Utc>,
     to: DateTime<Utc>,
@@ -50,7 +50,7 @@ pub async fn list_between(
     Ok(blocks)
 }
 
-pub async fn delete(pool: &SqlitePool, user_id: Uuid, block_id: Uuid) -> AppResult<u64> {
+pub async fn delete(pool: &PgPool, user_id: Uuid, block_id: Uuid) -> AppResult<u64> {
     let result = sqlx::query("DELETE FROM schedule_blocks WHERE id = $1 AND user_id = $2")
         .bind(block_id)
         .bind(user_id)

@@ -61,23 +61,25 @@ this rebuild.
    plans, workouts, feedback, schedule blocks) is naturally relational.
 2. **Make scheduling deterministic; make prose AI.** This is the core insight —
    it fixes timing and length issues at the root.
-3. **Isolate persistence.** Repository functions per table. This MVP ships on
-   **SQLite** for zero‑setup; the same interface backs a Postgres move when
-   concurrency demands it (see §4).
+3. **Isolate persistence.** Repository functions per table, so the database is a
+   contained concern (see §4).
 4. **Ship a thin, typed mobile client** over a well‑specified API, with caching
    (TanStack Query) and secure token storage.
 
-## 4. When to graduate from SQLite → Postgres
+## 4. Database: PostgreSQL
 
-SQLite is the right call for an MVP demo: no server, fast, transactional. Move to
-Postgres (e.g. Cloud SQL) when any of these appear:
+The app runs on **PostgreSQL**. It handles concurrent writers, supports horizontal
+scaling of stateless API instances behind one shared database, and gives room for
+analytics and pooling as usage grows — the properties a real product needs.
 
-- Concurrent writers beyond a single instance (SQLite serialises writers).
-- Horizontal scaling of the API (multiple stateless instances need a shared DB).
-- Analytics / heavier querying, connection pooling at scale.
+- **Dev** — a shared Postgres 16 on the `internal-one` server (database/role
+  `tt-app`). It is bound to localhost on that host, so developers connect over an
+  SSH tunnel. Migrations run automatically on API startup.
+- **Prod** — a managed instance (e.g. Cloud SQL / RDS); see `DEPLOYMENT.md`.
 
-Because SQL lives only in `repositories/`, this is a contained migration: swap the
-SQLx driver/types and the connection setup; the services and routes are unchanged.
+An early SQLite spike existed for zero‑setup local iteration; because all SQL lives
+in `repositories/`, moving to Postgres was a contained change (SQLx driver/types +
+connection setup) with services and routes untouched — evidence the layering holds.
 
 ## 5. Out of scope for this MVP (deliberate)
 

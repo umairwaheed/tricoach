@@ -1,5 +1,5 @@
 use chrono::Utc;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::enums::Platform;
@@ -7,7 +7,7 @@ use crate::domain::models::DeviceToken;
 use crate::error::AppResult;
 
 pub async fn upsert(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     token: &str,
     platform: Platform,
@@ -30,7 +30,7 @@ pub async fn upsert(
     Ok(device)
 }
 
-pub async fn list_for_user(pool: &SqlitePool, user_id: Uuid) -> AppResult<Vec<DeviceToken>> {
+pub async fn list_for_user(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<DeviceToken>> {
     let devices =
         sqlx::query_as::<_, DeviceToken>("SELECT * FROM device_tokens WHERE user_id = $1")
             .bind(user_id)

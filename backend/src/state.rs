@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::extract::FromRef;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 
 use crate::ai::AiCoach;
 use crate::auth::JwtEncoder;
@@ -10,7 +10,7 @@ use crate::notifications::PushSender;
 /// Shared application state, cloned cheaply into every handler.
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: SqlitePool,
+    pub pool: PgPool,
     pub jwt: JwtEncoder,
     pub coach: Arc<dyn AiCoach>,
     pub push: Arc<PushSender>,

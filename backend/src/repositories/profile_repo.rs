@@ -1,5 +1,5 @@
 use chrono::Utc;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::dto::UpsertProfileRequest;
@@ -7,7 +7,7 @@ use crate::domain::models::AthleteProfile;
 use crate::error::AppResult;
 
 pub async fn upsert(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     req: &UpsertProfileRequest,
 ) -> AppResult<AthleteProfile> {
@@ -43,7 +43,7 @@ pub async fn upsert(
     Ok(profile)
 }
 
-pub async fn get(pool: &SqlitePool, user_id: Uuid) -> AppResult<Option<AthleteProfile>> {
+pub async fn get(pool: &PgPool, user_id: Uuid) -> AppResult<Option<AthleteProfile>> {
     let profile =
         sqlx::query_as::<_, AthleteProfile>("SELECT * FROM athlete_profiles WHERE user_id = $1")
             .bind(user_id)

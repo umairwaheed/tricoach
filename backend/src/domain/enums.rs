@@ -1,9 +1,9 @@
-//! Domain enums stored as TEXT in SQLite.
+//! Domain enums stored as TEXT in PostgreSQL.
 //!
 //! The `string_enum!` macro generates, for each enum:
 //!   * serde `Serialize`/`Deserialize` (snake_case)
 //!   * `Display` / `FromStr`
-//!   * SQLx `Type`/`Encode`/`Decode` for SQLite so the enum maps transparently
+//!   * SQLx `Type`/`Encode`/`Decode` for Postgres so the enum maps transparently
 //!     to/from a TEXT column — no parallel "row" structs required.
 
 macro_rules! string_enum {
@@ -42,20 +42,20 @@ macro_rules! string_enum {
             }
         }
 
-        impl sqlx::Type<sqlx::Sqlite> for $name {
-            fn type_info() -> sqlx::sqlite::SqliteTypeInfo {
-                <str as sqlx::Type<sqlx::Sqlite>>::type_info()
+        impl sqlx::Type<sqlx::Postgres> for $name {
+            fn type_info() -> sqlx::postgres::PgTypeInfo {
+                <str as sqlx::Type<sqlx::Postgres>>::type_info()
             }
-            fn compatible(ty: &sqlx::sqlite::SqliteTypeInfo) -> bool {
-                <str as sqlx::Type<sqlx::Sqlite>>::compatible(ty)
+            fn compatible(ty: &sqlx::postgres::PgTypeInfo) -> bool {
+                <str as sqlx::Type<sqlx::Postgres>>::compatible(ty)
             }
         }
 
-        impl<'r> sqlx::Decode<'r, sqlx::Sqlite> for $name {
+        impl<'r> sqlx::Decode<'r, sqlx::Postgres> for $name {
             fn decode(
-                value: sqlx::sqlite::SqliteValueRef<'r>,
+                value: sqlx::postgres::PgValueRef<'r>,
             ) -> Result<Self, sqlx::error::BoxDynError> {
-                let s = <String as sqlx::Decode<sqlx::Sqlite>>::decode(value)?;
+                let s = <&str as sqlx::Decode<sqlx::Postgres>>::decode(value)?;
                 s.parse().map_err(|e: crate::error::AppError| {
                     Box::new(std::io::Error::new(
                         std::io::ErrorKind::InvalidData,
@@ -65,12 +65,12 @@ macro_rules! string_enum {
             }
         }
 
-        impl<'q> sqlx::Encode<'q, sqlx::Sqlite> for $name {
+        impl<'q> sqlx::Encode<'q, sqlx::Postgres> for $name {
             fn encode_by_ref(
                 &self,
-                buf: &mut Vec<sqlx::sqlite::SqliteArgumentValue<'q>>,
+                buf: &mut sqlx::postgres::PgArgumentBuffer,
             ) -> Result<sqlx::encode::IsNull, sqlx::error::BoxDynError> {
-                <String as sqlx::Encode<sqlx::Sqlite>>::encode(self.as_str().to_string(), buf)
+                <&str as sqlx::Encode<sqlx::Postgres>>::encode(self.as_str(), buf)
             }
         }
     };

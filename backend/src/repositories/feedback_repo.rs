@@ -1,5 +1,5 @@
 use chrono::Utc;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::dto::SubmitFeedbackRequest;
@@ -7,7 +7,7 @@ use crate::domain::models::WorkoutFeedback;
 use crate::error::AppResult;
 
 pub async fn upsert(
-    pool: &SqlitePool,
+    pool: &PgPool,
     workout_id: Uuid,
     req: &SubmitFeedbackRequest,
     ai_feedback: &str,
@@ -45,7 +45,7 @@ pub async fn upsert(
 }
 
 pub async fn get_for_workout(
-    pool: &SqlitePool,
+    pool: &PgPool,
     workout_id: Uuid,
 ) -> AppResult<Option<WorkoutFeedback>> {
     let feedback =

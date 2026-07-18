@@ -1,12 +1,12 @@
 use chrono::NaiveDate;
-use sqlx::SqlitePool;
+use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::domain::enums::WorkoutStatus;
 use crate::domain::models::Workout;
 use crate::error::AppResult;
 
-pub async fn list_for_plan(pool: &SqlitePool, plan_id: Uuid) -> AppResult<Vec<Workout>> {
+pub async fn list_for_plan(pool: &PgPool, plan_id: Uuid) -> AppResult<Vec<Workout>> {
     let workouts = sqlx::query_as::<_, Workout>(
         "SELECT * FROM workouts WHERE plan_id = $1 ORDER BY scheduled_date, discipline",
     )
@@ -19,7 +19,7 @@ pub async fn list_for_plan(pool: &SqlitePool, plan_id: Uuid) -> AppResult<Vec<Wo
 /// Fetch a workout only if it belongs to the given user (ownership folded into
 /// the join). Returns `None` both for missing and for not-owned workouts.
 pub async fn get_owned(
-    pool: &SqlitePool,
+    pool: &PgPool,
     workout_id: Uuid,
     user_id: Uuid,
 ) -> AppResult<Option<Workout>> {
@@ -39,7 +39,7 @@ pub async fn get_owned(
 }
 
 pub async fn update_status(
-    pool: &SqlitePool,
+    pool: &PgPool,
     workout_id: Uuid,
     status: WorkoutStatus,
 ) -> AppResult<Workout> {
@@ -55,7 +55,7 @@ pub async fn update_status(
 
 /// Workouts for a user within a date window (used by the schedule view).
 pub async fn list_for_user_between(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     from: NaiveDate,
     to: NaiveDate,

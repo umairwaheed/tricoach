@@ -1,5 +1,5 @@
 use chrono::{NaiveDate, Utc};
-use sqlx::{QueryBuilder, SqlitePool};
+use sqlx::{QueryBuilder, PgPool};
 use uuid::Uuid;
 
 use crate::ai::PlannedWorkout;
@@ -10,7 +10,7 @@ use crate::error::AppResult;
 /// Persist a plan and all its workouts atomically, archiving any prior active plan.
 #[allow(clippy::too_many_arguments)]
 pub async fn create_with_workouts(
-    pool: &SqlitePool,
+    pool: &PgPool,
     user_id: Uuid,
     race_distance: RaceDistance,
     race_date: NaiveDate,
@@ -74,7 +74,7 @@ pub async fn create_with_workouts(
     Ok(plan)
 }
 
-pub async fn list_for_user(pool: &SqlitePool, user_id: Uuid) -> AppResult<Vec<TrainingPlan>> {
+pub async fn list_for_user(pool: &PgPool, user_id: Uuid) -> AppResult<Vec<TrainingPlan>> {
     let plans = sqlx::query_as::<_, TrainingPlan>(
         "SELECT * FROM training_plans WHERE user_id = $1 ORDER BY created_at DESC",
     )
@@ -85,7 +85,7 @@ pub async fn list_for_user(pool: &SqlitePool, user_id: Uuid) -> AppResult<Vec<Tr
 }
 
 pub async fn get_owned(
-    pool: &SqlitePool,
+    pool: &PgPool,
     plan_id: Uuid,
     user_id: Uuid,
 ) -> AppResult<Option<TrainingPlan>> {
@@ -99,7 +99,7 @@ pub async fn get_owned(
     Ok(plan)
 }
 
-pub async fn get_active(pool: &SqlitePool, user_id: Uuid) -> AppResult<Option<TrainingPlan>> {
+pub async fn get_active(pool: &PgPool, user_id: Uuid) -> AppResult<Option<TrainingPlan>> {
     let plan = sqlx::query_as::<_, TrainingPlan>(
         "SELECT * FROM training_plans WHERE user_id = $1 AND status = 'active' ORDER BY created_at DESC LIMIT 1",
     )
