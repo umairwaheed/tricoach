@@ -1,13 +1,45 @@
-# Deployment — Google Cloud Run
+# Deployment
 
-The backend is a single stateless container that serves HTTP on `$BIND_ADDR`
-(default `0.0.0.0:8080`). Cloud Run is a natural fit. Gemini is Google's own API,
-so keys and quotas live in the same cloud.
+## Current deployment — `internal-one`
 
-> **Database:** the app uses **PostgreSQL**. In production, run a managed instance
-> (Cloud SQL / RDS) and point `DATABASE_URL` at it. In development it connects to the
-> shared Postgres on `internal-one` over an SSH tunnel (see `backend/.env.example`).
-> The API container is stateless, so it scales horizontally behind one database.
+The app is deployed on the `internal-one` server:
+
+- **URL:** https://coaching-app.getprixite.com (nginx + Let's Encrypt, cert auto-renews)
+- **Service:** systemd unit `coaching-app` running as the `coaching-app` system user;
+  native binary `/opt/coaching-app/bin/tricoach` listening on `127.0.0.1:3010`
+- **Database:** one PostgreSQL database `coaching-app` on the same host
+- **Config/secrets:** `/etc/coaching-app/coaching-app.env` (root:coaching-app, 640)
+- **Source + deploy script:** `/opt/coaching-app/src` and `/opt/coaching-app/deploy.sh`
+
+Redeploy the latest `main`:
+
+```bash
+git push origin main
+ssh internal-one /opt/coaching-app/deploy.sh
+```
+
+`deploy.sh` pulls, builds the release binary with Docker (no Rust toolchain on the
+host), installs it, and restarts the service. Migrations run on startup. To switch
+the coach from deterministic to Gemini, add `GEMINI_API_KEY=…` to the env file and
+`systemctl restart coaching-app`.
+
+Handy operations:
+
+```bash
+systemctl status coaching-app          # service state
+journalctl -u coaching-app -f          # live logs
+```
+
+---
+
+## Alternative — Google Cloud Run
+
+The same container also runs as a stateless service on Cloud Run (or AWS App
+Runner / ECS). Gemini is Google's own API, so keys and quotas live in the same cloud.
+
+> **Database:** run a managed PostgreSQL instance (Cloud SQL / RDS) and point
+> `DATABASE_URL` at it. The API container is stateless, so it scales horizontally
+> behind one database.
 
 ## 0. Prerequisites
 

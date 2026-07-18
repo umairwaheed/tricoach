@@ -24,7 +24,7 @@
       "favicon": "./assets/favicon.png"
     },
     "extra": {
-      "apiUrl": "http://localhost:8080"
+      "apiUrl": "https://coaching-app.getprixite.com"
     },
     "plugins": [
       "expo-secure-store"

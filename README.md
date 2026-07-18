@@ -50,12 +50,11 @@ real AI when `GEMINI_API_KEY` is set — the same trait, two implementations.
 
 **Mobile** — React Native (Expo SDK 57, TypeScript) · React Navigation · TanStack Query · Axios · SecureStore.
 
-**Ops** — Multi‑stage Docker build · `docker compose` · designed for GCP Cloud Run (see [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md)).
+**Ops** — Multi‑stage Docker build · deployed on `internal-one` (systemd + nginx + PostgreSQL) at **https://coaching-app.getprixite.com**.
 
-> The data layer is isolated behind repository functions, so the database is a
-> contained concern. The shared dev database runs on `internal-one` (Postgres,
-> reached via an SSH tunnel); a local `docker compose` Postgres is provided for
-> self‑contained runs.
+> There is a single deployed environment on `internal-one` — the app is built and
+> tested there, backed by one PostgreSQL database (`coaching-app`). The data layer
+> is isolated behind repository functions, so the database stays a contained concern.
 
 ---
 
@@ -85,46 +84,33 @@ docker-compose.yml
 
 ---
 
-## Quick start
+## Environment & deployment
 
-### 1. Backend
+The app runs on the **`internal-one`** server — there is no separate local backend.
 
-Prerequisites: Rust (stable) and a PostgreSQL database. Two options:
+**Live API:** https://coaching-app.getprixite.com · health: `/health`
 
-- **Local**: `docker compose up db` (Postgres on `:5432`), or
-- **Shared dev DB** on `internal-one` via SSH tunnel:
-  ```bash
-  ssh -f -N -L 5433:127.0.0.1:5432 internal-one
-  # then set DATABASE_URL=postgres://tt-app:<password>@127.0.0.1:5433/tt-app
-  ```
+| Piece | Detail |
+| --- | --- |
+| Runtime | systemd service `coaching-app` (system user `coaching-app`), native binary at `/opt/coaching-app/bin/tricoach` on `127.0.0.1:3010`, behind nginx + TLS |
+| Database | one PostgreSQL database, `coaching-app`, on the same host |
+| Config | `/etc/coaching-app/coaching-app.env` (not in the repo); set `GEMINI_API_KEY` there to use Gemini instead of the deterministic coach, then `systemctl restart coaching-app` |
 
-```bash
-cd backend
-cp .env.example .env            # set DATABASE_URL
-cargo run                       # runs migrations, then serves on :8080
-```
+### Deploy / redeploy
 
-Health check:
+The server holds a checkout at `/opt/coaching-app/src` plus a deploy script. To ship `main`:
 
 ```bash
-curl localhost:8080/health      # {"database":"up","status":"ok"}
+git push origin main
+ssh internal-one /opt/coaching-app/deploy.sh   # pull → docker build → extract → restart
 ```
 
-To enable real AI, set a key (otherwise the deterministic coach is used):
+The script builds the release binary with Docker (no Rust toolchain on the host) and
+restarts the service; migrations run automatically on startup.
 
-```bash
-GEMINI_API_KEY=your-key cargo run
-```
+### Mobile client
 
-Run the tests (the periodization engine is fully unit‑tested):
-
-```bash
-cargo test
-```
-
-### 2. Mobile
-
-Prerequisites: Node 18+.
+The Expo app points at the live API (`app.json → extra.apiUrl`):
 
 ```bash
 cd mobile
@@ -132,14 +118,10 @@ npm install
 npm run web        # or: npm run ios / npm run android
 ```
 
-The app talks to `http://localhost:8080` by default (see `app.json → extra.apiUrl`).
-On a physical device, change `localhost` to your machine's LAN IP.
+### Tests
 
-### 3. Docker (full stack)
-
-```bash
-docker compose up --build       # Postgres + API on :8080
-```
+The deterministic periodization engine is fully unit‑tested (`cargo test` in `backend/`);
+tests also run inside the Docker build.
 
 ---
 
@@ -169,7 +151,7 @@ All routes are under `/api/v1`. Protected routes require `Authorization: Bearer 
 <summary>Example: generate a plan (curl)</summary>
 
 ```bash
-BASE=http://localhost:8080
+BASE=https://coaching-app.getprixite.com
 TOKEN=$(curl -s -X POST $BASE/api/v1/auth/register \
   -H 'Content-Type: application/json' \
   -d '{"email":"alex@example.com","password":"password123"}' | jq -r .token)
