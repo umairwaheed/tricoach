@@ -11,7 +11,11 @@ RUN rm -rf src
 # Build the real sources (migrations are embedded via sqlx::migrate!).
 COPY migrations ./migrations
 COPY src ./src
-RUN cargo build --release
+# Bust the dependency-cache layer: freshen source mtimes and drop the placeholder
+# binary so cargo always relinks the real application (not the `fn main(){}` stub).
+RUN find src -name '*.rs' -exec touch {} + \
+    && rm -f target/release/tricoach target/release/deps/tricoach-* \
+    && cargo build --release
 
 # ---- Runtime stage ----
 FROM debian:bookworm-slim AS runtime
