@@ -1,0 +1,19 @@
+# TriCoach runs on embedded SQLite — no database server required.
+# The database file is persisted in the `tricoach_data` volume.
+services:
+  api:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:///data/tricoach.db
+      BIND_ADDR: 0.0.0.0:8080
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      RUST_LOG: info,tower_http=info,sqlx=warn
+    ports:
+      - "8080:8080"
+    volumes:
+      - tricoach_data:/data
+
+volumes:
+  tricoach_data:

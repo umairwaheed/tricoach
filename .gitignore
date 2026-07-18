@@ -1,0 +1,15 @@
+# Rust
+backend/target/
+backend/*.db
+backend/*.db-shm
+backend/*.db-wal
+.env
+
+# Node / Expo
+mobile/node_modules/
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+
+# OS
+.DS_Store
